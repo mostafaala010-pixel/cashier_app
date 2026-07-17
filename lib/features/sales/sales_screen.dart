@@ -1,86 +1,34 @@
+
 import 'package:flutter/material.dart';
 import '../../core/database/database_helper.dart';
-
-class SalesScreen extends StatefulWidget {
-  const SalesScreen({super.key});
-  @override
-  State<SalesScreen> createState() => _S();
-}
-
+class SalesScreen extends StatefulWidget { const SalesScreen({super.key}); @override State<SalesScreen> createState()=>_S(); }
 class _S extends State<SalesScreen> {
-  List<Map<String, dynamic>> pr = [];
-  List<Map<String, dynamic>> cart = [];
-
-  @override
-  void initState() { super.initState(); ld(); }
-
+  List<Map<String,dynamic>> pr=[]; List<Map<String,dynamic>> cart=[];
+  @override void initState(){super.initState(); ld();}
   Future<void> ld() async {
-    final db = await DatabaseHelper.instance.database;
-    var r = await db.query('products');
-    if (r.isEmpty) {
-      await db.insert('products', {'name': 'Pepsi', 'price': 300, 'stockQuantity': 100, 'barcode': '1'});
-      await db.insert('products', {'name': 'Water', 'price': 100, 'stockQuantity': 200, 'barcode': '2'});
-      r = await db.query('products');
-    }
-    setState(() => pr = r);
+    final db=await DatabaseHelper.instance.database;
+    var r=await db.query('products');
+    if(r.isEmpty){ await db.insert('products',{'name':'بيبسي 250مل','price':300,'stockQuantity':50,'barcode':'1'}); await db.insert('products',{'name':'ماء صغير','price':100,'stockQuantity':120,'barcode':'2'}); await db.insert('products',{'name':'عصير المراعي','price':500,'stockQuantity':30,'barcode':'3'}); await db.insert('products',{'name':'شيبس ليز','price':400,'stockQuantity':80,'barcode':'4'}); r=await db.query('products'); }
+    setState(()=>pr=r);
   }
-
-  void addP(Map<String, dynamic> p) {
-    setState(() {
-      final i = cart.indexWhere((e) => e['id'] == p['id']);
-      if (i >= 0) cart[i]['qty']++;
-      else cart.add({...p, 'qty': 1});
-    });
-  }
-
-  double get tot => cart.fold(0, (s, e) => s + (e['price'] as num) * (e['qty'] as int));
-
-  Future<void> co() async {
-    final db = await DatabaseHelper.instance.database;
-    for (var it in cart) {
-      await db.rawUpdate('UPDATE products SET stockQuantity=stockQuantity-? WHERE id=?', [it['qty'], it['id']]);
-    }
-    await db.insert('invoices', {'total': tot, 'date': DateTime.now().toIso8601String()});
-    setState(() => cart = []);
-    ld();
-  }
-
-  @override
-  Widget build(BuildContext c) {
+  void addP(p){ setState((){ final i=cart.indexWhere((e)=>e['id']==p['id']); if(i>=0) cart[i]['qty']++; else cart.add({...p,'qty':1}); }); }
+  double get tot=>cart.fold(0,(s,e)=>s+(e['price'] as num)*(e['qty'] as int));
+  Future<void> co() async { final db=await DatabaseHelper.instance.database; for(var it in cart){ await db.rawUpdate('UPDATE products SET stockQuantity=stockQuantity-? WHERE id=?',[it['qty'],it['id']]); } await db.insert('invoices',{'total':tot,'date':DateTime.now().toIso8601String()}); setState(()=>cart=[]); ld(); if(mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content:Text('✅ تم حفظ الفاتورة بنجاح'), backgroundColor:Colors.green)); }
+  @override Widget build(BuildContext c){
+    final isDark = Theme.of(context).brightness==Brightness.dark;
     return Scaffold(
-      appBar: AppBar(title: const Text('POS Pro'), backgroundColor: const Color(0xFF0F172A), foregroundColor: Colors.white),
-      body: Row(children: [
-        Expanded(
-          flex: 2,
-          child: GridView.builder(
-            padding: const EdgeInsets.all(12),
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 3, childAspectRatio: 1.1, crossAxisSpacing: 10, mainAxisSpacing: 10),
-            itemCount: pr.length,
-            itemBuilder: (_, i) {
-              final p = pr[i];
-              return Card(
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                child: InkWell(
-                  onTap: () => addP(p),
-                  child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-                    const Icon(Icons.shopping_bag, size: 32, color: Colors.blue),
-                    Text(p['name'], style: const TextStyle(fontWeight: FontWeight.bold)),
-                    Text('${p['price']} YER'),
-                    Text('Stock ${p['stockQuantity']}'),
-                  ]),
-                ),
-              );
-            },
-          ),
-        ),
-        Expanded(
-          flex: 1,
-          child: Column(children: [
-            Container(padding: const EdgeInsets.all(16), color: const Color(0xFF0F172A), child: Row(children: [const Text('Cart', style: TextStyle(color: Colors.white)), Text(' ${cart.length} items', style: const TextStyle(color: Colors.white70))])),
-            Expanded(child: ListView.builder(itemCount: cart.length, itemBuilder: (_, i) => ListTile(title: Text(cart[i]['name']), subtitle: Text('x${cart[i]['qty']}'), trailing: Text('${(cart[i]['price'] as num) * (cart[i]['qty'] as int)}')))),
-            Padding(padding: const EdgeInsets.all(16), child: SizedBox(width: double.infinity, height: 50, child: ElevatedButton(style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF0F172A)), onPressed: cart.isEmpty? null : co, child: Text('CHECKOUT $tot', style: const TextStyle(color: Colors.white))))),
-          ]),
-        ),
+      backgroundColor: isDark? null : const Color(0xFFF1F5F9),
+      appBar: AppBar(title: const Text('نقطة البيع',style:TextStyle(fontWeight:FontWeight.bold)), backgroundColor:const Color(0xFF0F172A), foregroundColor:Colors.white, actions:[IconButton(icon:const Icon(Icons.delete_sweep), onPressed:()=>setState(()=>cart=[]))]),
+      body: Row(children:[
+        Expanded(flex:3, child: Column(children:[
+          Container(margin:const EdgeInsets.all(12), padding:const EdgeInsets.symmetric(horizontal:16), decoration:BoxDecoration(color:isDark?Colors.white10:Colors.white, borderRadius:BorderRadius.circular(12)), child: const TextField(decoration:InputDecoration(icon:Icon(Icons.search), hintText:'ابحث عن منتج أو امسح باركود...', border:InputBorder.none), textAlign:TextAlign.right)),
+          Expanded(child: GridView.builder(padding:const EdgeInsets.all(12), gridDelegate:const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount:2, childAspectRatio:0.9, crossAxisSpacing:12, mainAxisSpacing:12), itemCount:pr.length, itemBuilder:(_,i){ final p=pr[i]; final low = (p['stockQuantity'] as int) < 10; return Container(decoration:BoxDecoration(color:isDark?const Color(0xFF1E293B):Colors.white, borderRadius:BorderRadius.circular(16), border: low? Border.all(color:Colors.red.withOpacity(0.5)):null, boxShadow:[BoxShadow(color:Colors.black.withOpacity(0.05), blurRadius:8)]), child: InkWell(onTap:()=>addP(p), borderRadius:BorderRadius.circular(16), child:Padding(padding:const EdgeInsets.all(12), child:Column(mainAxisAlignment:MainAxisAlignment.center, children:[Container(padding:const EdgeInsets.all(14), decoration:BoxDecoration(color: low? Colors.red.withOpacity(0.1): Colors.blue.withOpacity(0.1), shape:BoxShape.circle), child:Icon(low? Icons.warning : Icons.shopping_bag, color: low? Colors.red: Colors.blue, size:28)), const SizedBox(height:10), Text(p['name'], textAlign:TextAlign.center, style:const TextStyle(fontWeight:FontWeight.bold, fontSize:14)), const SizedBox(height:4), Container(padding:const EdgeInsets.symmetric(horizontal:8,vertical:2), decoration:BoxDecoration(color:Colors.green.withOpacity(0.1), borderRadius:BorderRadius.circular(6)), child:Text('${p['price']} ر.ي', style:const TextStyle(color:Color(0xFF16A34A), fontWeight:FontWeight.bold, fontSize:13))), const SizedBox(height:4), Text('الكمية: ${p['stockQuantity']}', style:TextStyle(color: low? Colors.red: Colors.grey, fontSize:11))]))); })),
+        ])),
+        Container(width:340, decoration:BoxDecoration(color: isDark? const Color(0xFF0F172A): const Color(0xFF0F172A), boxShadow:[BoxShadow(color:Colors.black.withOpacity(0.2), blurRadius:10)]), child: Column(children:[
+          Container(padding:const EdgeInsets.all(20), child: Row(mainAxisAlignment:MainAxisAlignment.spaceBetween, children:[const Text('السلة', style:TextStyle(color:Colors.white, fontSize:20, fontWeight:FontWeight.bold)), Container(padding:const EdgeInsets.symmetric(horizontal:12,vertical:6), decoration:BoxDecoration(color:Colors.white.withOpacity(0.15), borderRadius:BorderRadius.circular(20)), child:Text('${cart.length} صنف - ${cart.fold(0,(s,e)=>s+e['qty'] as int)} قطعة', style:const TextStyle(color:Colors.white70, fontSize:12)))])),
+          Expanded(child: cart.isEmpty? const Center(child:Column(mainAxisAlignment:MainAxisAlignment.center, children:[Icon(Icons.shopping_cart_outlined, color:Colors.white24, size:60), SizedBox(height:12), Text('السلة فارغة', style:TextStyle(color:Colors.white54, fontSize:16)), Text('اضغط على المنتجات لإضافتها', style:TextStyle(color:Colors.white24, fontSize:12))])) : ListView.separated(padding:const EdgeInsets.all(12), itemCount:cart.length, separatorBuilder:(_,__)=>const SizedBox(height:8), itemBuilder:(_,i){ final it=cart[i]; return Container(padding:const EdgeInsets.all(12), decoration:BoxDecoration(color:Colors.white.withOpacity(0.07), borderRadius:BorderRadius.circular(12)), child:Row(children:[Expanded(child:Column(crossAxisAlignment:CrossAxisAlignment.start, children:[Text(it['name'], style:const TextStyle(color:Colors.white, fontWeight:FontWeight.bold)), const SizedBox(height:2), Text('${it['price']} × ${it['qty']}', style:const TextStyle(color:Colors.white60, fontSize:12))])), Column(crossAxisAlignment:CrossAxisAlignment.end, children:[Text('${(it['price'] as num) * (it['qty'] as int)} ر.ي', style:const TextStyle(color:Color(0xFF22C55E), fontWeight:FontWeight.bold)), Row(children:[IconButton(iconSize:18, padding:EdgeInsets.zero, constraints:const BoxConstraints(), icon:const Icon(Icons.remove_circle_outline, color:Colors.white54), onPressed:(){ setState((){ if(it['qty']>1) it['qty']--; else cart.removeAt(i); }); }), const SizedBox(width:8), IconButton(iconSize:18, padding:EdgeInsets.zero, constraints:const BoxConstraints(), icon:const Icon(Icons.add_circle_outline, color:Colors.white), onPressed:(){ setState(()=>it['qty']++); })])])])); })),
+          Container(padding:const EdgeInsets.all(20), decoration:BoxDecoration(color:Colors.black.withOpacity(0.3), borderRadius:const BorderRadius.vertical(top:Radius.circular(16))), child:Column(children:[Row(mainAxisAlignment:MainAxisAlignment.spaceBetween, children:[const Text('المجموع:', style:TextStyle(color:Colors.white70)), Text('$tot ر.ي', style:const TextStyle(color:Colors.white, fontSize:24, fontWeight:FontWeight.bold))]), const SizedBox(height:16), SizedBox(width:double.infinity, height:56, child:ElevatedButton.icon(icon:const Icon(Icons.check_circle, color:Colors.white), label:const Text('تأكيد الدفع والطباعة', style:TextStyle(color:Colors.white, fontWeight:FontWeight.bold, fontSize:16)), style:ElevatedButton.styleFrom(backgroundColor:const Color(0xFF22C55E), shape:RoundedRectangleBorder(borderRadius:BorderRadius.circular(12))), onPressed:cart.isEmpty? null: co))]))
+        ]))
       ]),
     );
   }
